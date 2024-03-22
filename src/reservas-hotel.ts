@@ -1,9 +1,10 @@
-import { Precios, Reserva, reservas } from "./reservas-hotel.model";
+import { Precios, Reserva } from "./reservas-hotel.model";
+import { reservas } from "./reservas-hotel.data";
 
 class ReservasHotel {
   private iva: number = 0.21;
-  private costeDesayunos: number = 15;
   private _preciosHabitaciones: Precios;
+  private _costeDesayuno: number;
   private _descuento: number;
   private _recargo: number;
 
@@ -12,7 +13,8 @@ class ReservasHotel {
   constructor(reservas: Reserva[]) {
     this.reservas = reservas;
     this._preciosHabitaciones = { standard: 0, suite: 0 };
-    this._descuento = 0;
+    this._costeDesayuno = 0;
+    this._descuento = 1;
     this._recargo = 0;
   }
 
@@ -22,10 +24,14 @@ class ReservasHotel {
 
   set descuento(porcentajeDescuento: number) {
     if (porcentajeDescuento >= 0 && porcentajeDescuento <= 1) {
-      this._descuento = porcentajeDescuento;
+      this._descuento = 1 - porcentajeDescuento;
     } else {
-      throw new Error("El descuento debe tener un valor entre 0 y 1.");
+      throw new Error("El descuento debe tener un valor entre 0 y 1");
     }
+  }
+
+  set costeDesayunos(importeCosteDesayunos: number) {
+    this._costeDesayuno = importeCosteDesayunos;
   }
 
   set recargo(importeRecargo: number) {
@@ -38,23 +44,21 @@ class ReservasHotel {
     this.reservas.forEach((reserva: Reserva) => {
       const precioNoche = this._preciosHabitaciones[reserva.tipoHabitacion];
       const precioTotalNoches = reserva.noches * precioNoche;
-
-      if (reserva.desayuno === true) {
-        this._recargo += this.costeDesayunos;
-      }
-
       const precioRecargos: number = this._recargo * reserva.pax * reserva.noches;
+      const precioDesayunos: number = reserva.desayuno
+        ? reserva.noches * reserva.pax * this._costeDesayuno
+        : 0;
 
-      subtotal += precioTotalNoches + precioRecargos;
+      subtotal += precioTotalNoches + precioRecargos + precioDesayunos;
     });
 
-    return Number(subtotal.toFixed(2));
+    return Number((subtotal * this._descuento).toFixed(2));
   }
 
   get total() {
     const subtotal: number = this.subtotal;
-    const precioDescuento: number = subtotal * this._descuento;
-    const total: number = subtotal + this.iva * subtotal - precioDescuento;
+    const total: number = subtotal + this.iva * subtotal;
+
     return Number(total.toFixed(2));
   }
 
@@ -71,6 +75,7 @@ class ReservasParticular extends ReservasHotel {
     super(reservas);
     this.preciosHabitaciones = { standard: 100, suite: 150 };
     this.recargo = 40;
+    this.costeDesayunos = 15;
   }
 }
 
@@ -79,6 +84,8 @@ class ReservasTourOperador extends ReservasHotel {
     super(reservas);
 
     this.preciosHabitaciones = { standard: 100, suite: 100 };
+    this.recargo = 40;
+    this.costeDesayunos = 15;
     this.descuento = 0.15;
   }
 }
